@@ -26,7 +26,6 @@ const to = toRaw ? toRaw.toLowerCase() : '';
       const transaction = prepareContractCall({
         contract,
         params: [to, amountInUnits],
-        params: [to, amountInUnits],
       });
       const result = await sendTransaction({ transaction, account });
       const returnUrl = `${process.env.NEXT_PUBLIC_BUBBLE_RETURN_URL}?tx_hash=${result.transactionHash}`;
