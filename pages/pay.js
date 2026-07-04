@@ -1,7 +1,9 @@
 import { useRouter } from "next/router";
-import { createThirdwebClient, getContract, prepareContractCall, sendTransaction } from "thirdweb";
+import { useState } from "react";
+import { createThirdwebClient } from "thirdweb";
 import { defineChain } from "thirdweb/chains";
-import { ConnectButton, useActiveAccount } from "thirdweb/react";
+import { ConnectButton, useActiveAccount, useSendTransaction } from "thirdweb/react";
+import { prepareContractCall, getContract } from "thirdweb";
 
 const client = createThirdwebClient({
   clientId: "a27dd7d0078c0ec1f061ebafe47cf8c9",
@@ -9,29 +11,55 @@ const client = createThirdwebClient({
 
 const arcTestnet = defineChain(5042002);
 
+const USDC_ABI = [{
+  name: "transfer",
+  type: "function",
+  stateMutability: "nonpayable",
+  inputs: [
+    { name: "to", type: "address" },
+    { name: "amount", type: "uint256" }
+  ],
+  outputs: [{ name: "", type: "bool" }]
+}];
+
 const USDC_ADDRESS = "0x1c7D4B196Cb0C7B01d743Fbc6116a902379C7238";
 
 export default function PayPage() {
   const router = useRouter();
-  const { to: toRaw, amount } = router.query;
-const to = toRaw ? toRaw.toLowerCase() : '';
+  const { to, amount } = router.query;
   const account = useActiveAccount();
+  const { mutate: sendTx } = useSendTransaction();
+  const [loading, setLoading] = useState(false);
 
   async function handlePay() {
-    if (!account) return alert("Please connect your wallet first");
+    if (!account || !to || !amount) return;
+    setLoading(true);
     try {
-      const contract = getContract({ client, chain: arcTestnet, address: USDC_ADDRESS });
+      const contract = getContract({
+        client,
+        chain: arcTestnet,
+        address: USDC_ADDRESS,
+        abi: USDC_ABI,
+      });
       const amountInUnits = BigInt(Math.round(parseFloat(amount) * 1e6));
-      const toAddress = to.toLowerCase().replace(/^0x/, '0x');
       const transaction = prepareContractCall({
         contract,
+        method: "transfer",
         params: [to, amountInUnits],
       });
-      const result = await sendTransaction({ transaction, account });
-      const returnUrl = `${process.env.NEXT_PUBLIC_BUBBLE_RETURN_URL}?tx_hash=${result.transactionHash}`;
-      window.location.href = returnUrl;
+      sendTx(transaction, {
+        onSuccess: (result) => {
+          const returnUrl = `${process.env.NEXT_PUBLIC_BUBBLE_RETURN_URL}?tx_hash=${result.transactionHash}`;
+          window.location.href = returnUrl;
+        },
+        onError: (err) => {
+          alert("Payment failed: " + err.message);
+          setLoading(false);
+        }
+      });
     } catch (err) {
-      alert("Payment failed: " + err.message);
+      alert("Error: " + err.message);
+      setLoading(false);
     }
   }
 
@@ -45,8 +73,8 @@ const to = toRaw ? toRaw.toLowerCase() : '';
       </div>
       <ConnectButton client={client} chain={arcTestnet} />
       {account && (
-        <button onClick={handlePay} style={{ marginTop: 20, padding: "12px 32px", background: "#0066ff", color: "#fff", border: "none", borderRadius: 8, fontSize: 16, cursor: "pointer" }}>
-          Confirm & Send
+        <button onClick={handlePay} disabled={loading} style={{ marginTop: 20, padding: "12px 32px", background: "#0066ff", color: "#fff", border: "none", borderRadius: 8, fontSize: 16, cursor: "pointer" }}>
+          {loading ? "Sending..." : "Confirm & Send"}
         </button>
       )}
     </div>
