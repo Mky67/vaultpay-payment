@@ -13,7 +13,8 @@ const USDC_ADDRESS = "0x1c7D4B196Cb0C7B01d743Fbc6116a902379C7238";
 
 export default function PayPage() {
   const router = useRouter();
-  const { to, amount } = router.query;
+  const { to: toRaw, amount } = router.query;
+const to = toRaw ? toRaw.toLowerCase() : '';
   const account = useActiveAccount();
 
   async function handlePay() {
@@ -21,9 +22,10 @@ export default function PayPage() {
     try {
       const contract = getContract({ client, chain: arcTestnet, address: USDC_ADDRESS });
       const amountInUnits = BigInt(Math.round(parseFloat(amount) * 1e6));
+      const toAddress = to.toLowerCase().replace(/^0x/, '0x');
       const transaction = prepareContractCall({
         contract,
-        method: "function transfer(address to, uint256 amount) returns (bool)",
+        params: [to, amountInUnits],
         params: [to, amountInUnits],
       });
       const result = await sendTransaction({ transaction, account });
