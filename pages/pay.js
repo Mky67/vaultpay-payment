@@ -2,6 +2,7 @@ import { useRouter } from "next/router";
 import { useState } from "react";
 import { createThirdwebClient } from "thirdweb";
 import { defineChain } from "thirdweb/chains";
+import { getAddress } from "thirdweb/utils";
 import { ConnectButton, useActiveAccount, useSendTransaction } from "thirdweb/react";
 import { prepareContractCall, getContract } from "thirdweb";
 
@@ -35,6 +36,7 @@ export default function PayPage() {
     if (!account || !to || !amount) return;
     setLoading(true);
     try {
+      const checksumAddress = getAddress(to);
       const contract = getContract({
         client,
         chain: arcTestnet,
@@ -45,7 +47,7 @@ export default function PayPage() {
       const transaction = prepareContractCall({
         contract,
         method: "transfer",
-        params: [to, amountInUnits],
+       params: [checksumAddress, amountInUnits],
       });
       sendTx(transaction, {
         onSuccess: (result) => {
