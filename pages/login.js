@@ -2,6 +2,53 @@ import { useState } from "react";
 import { useRouter } from "next/router";
 import { createClient } from "@supabase/supabase-js";
 
+const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL;
+const supabaseKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY;
+
+// Env değişkenleri eksikse client'ı hiç oluşturma, net hata ver
+const supabase = supabaseUrl && supabaseKey ? createClient(supabaseUrl, supabaseKey) : null;
+
+export default function Login() {
+  const router = useRouter();
+  const [email, setEmail] = useState("");
+  const [password, setPassword] = useState("");
+  const [isSignUp, setIsSignUp] = useState(false);
+  const [loading, setLoading] = useState(false);
+  const [message, setMessage] = useState("");
+
+  async function handleAuth() {
+    if (!supabase) {
+      setMessage("Yapılandırma hatası: Supabase env değişkenleri eksik (NEXT_PUBLIC_SUPABASE_URL / NEXT_PUBLIC_SUPABASE_ANON_KEY). Vercel'de kontrol edip yeniden deploy edin.");
+      return;
+    }
+    setLoading(true);
+    setMessage("");
+    try {
+      if (isSignUp) {
+        const { error } = await supabase.auth.signUp({ email, password });
+        if (error) throw error;
+        setMessage("Kayıt başarılı! Giriş yapabilirsiniz.");
+        setIsSignUp(false);
+      } else {
+        const { error } = await supabase.auth.signInWithPassword({ email, password });
+        if (error) throw error;
+        router.push("/dashboard");
+      }
+    } catch (err) {
+      setMessage(
+        err.message === "Failed to fetch"
+          ? "Sunucuya ulaşılamadı. Supabase URL/key ayarlarını ve internet bağlantısını kontrol edin."
+          : err.message
+      );
+    }
+    setLoading(false);
+  }
+
+  // ... geri kalan JSX aynı kalabilir
+import { useState } from "react";
+import { useRouter } from "next/router";
+import { createClient } from "@supabase/supabase-js";
+
 const supabase = createClient(
   process.env.NEXT_PUBLIC_SUPABASE_URL,
   process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY
